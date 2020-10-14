@@ -1,0 +1,22 @@
+Log-in to controller and create a certification key and note it down:
+
+kubeadm alpha certs certificate-key It will return something like: d27457b11d7b36e00a5cffb13c728aca646e467cbec6f0f4139cd2370b09232a
+
+Run following commands in Controller machine:
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --upload-certs --certificate-key f517ab94793daded491814a086dd2d1358f50562d10e25bff6532eaec6e7fe9a This will give output like which you need to copy: Then you can join any number of worker nodes by running the following on each as root: kubeadm join 10.230.0.10:6443 --token jv6rcs.qfq7rvowkfaap596
+--discovery-token-ca-cert-hash sha256:caaceb5482d6c1fd4b023cf09fac8fdbd672a7069ede0712c0fe3824b4adc884
+
+If you missed above then
+
+kubeadm token create --print-join-command
+
+Next:
+
+mkdir -p $HOME/.kube sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+
+Run this command in Worker-0 and Worker-1 machine:
+
+sudo kubeadm join 10.230.0.10:6443 --token jv6rcs.qfq7rvowkfaap596 --discovery-token-ca-cert-hash sha256:caaceb5482d6c1fd4b023cf09fac8fdbd672a7069ede0712c0fe3824b4adc884
