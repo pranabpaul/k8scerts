@@ -1,0 +1,75 @@
+Start Azure Cloud Shell
+
+Create resource group:
+
+az group create -n kubeadm -l westeurope
+
+Create virtual network:
+
+az network vnet create -g kubeadm -n kubernetes-vnet --address-prefix 10.230.0.0/24
+
+Create NSG:
+
+az network nsg create -g kubeadm -n kubernetes-nsg
+
+Create a firewall rule that allows external SSH and HTTPS:
+
+az network nsg rule create -g kubeadm -n kubernetes-allow-ssh --access allow --destination-address-prefix '' --destination-port-range 22 --direction inbound --nsg-name kubernetes-nsg --protocol tcp --source-address-prefix '' --source-port-range '*' --priority 1000
+
+az network nsg rule create -g kubeadm -n kubernetes-allow-api-server --access allow --destination-address-prefix '' --destination-port-range 6443 --direction inbound --nsg-name kubernetes-nsg --protocol tcp --source-address-prefix '' --source-port-range '*' --priority 1001
+
+Create 2 subnets:
+
+az network vnet subnet create -g kubeadm --vnet-name kubernetes-vnet -n kubernetes-subnet --address-prefixes 10.230.0.0/27 --network-security-group kubernetes-nsg
+
+az network vnet subnet create -g kubeadm --vnet-name kubernetes-vnet -n launcher-subnet --address-prefixes 10.230.0.32/28 --network-security-group kubernetes-nsg
+
+Create nic and pip for controller VM:
+
+az network public-ip create -n controller-pip -g kubeadm > /dev/null
+
+az network nic create -g kubeadm -n controller-nic --private-ip-address 10.230.0.10 --public-ip-address controller-pip --vnet kubernetes-vnet --subnet kubernetes-subnet --ip-forwarding > /dev/null
+
+Create availability set, nics and pips for worker VMs:
+
+az vm availability-set create -g kubeadm -n worker-as
+
+az network public-ip create -n worker-0-pip -g kubeadm > /dev/null
+
+az network public-ip create -n worker-1-pip -g kubeadm > /dev/null
+
+az network nic create -g kubeadm -n worker-0-nic --private-ip-address 10.230.0.20 --public-ip-address worker-0-pip --vnet kubernetes-vnet --subnet kubernetes-subnet --ip-forwarding > /dev/null
+
+az network nic create -g kubeadm -n worker-1-nic --private-ip-address 10.230.0.21 --public-ip-address worker-1-pip --vnet kubernetes-vnet --subnet kubernetes-subnet --ip-forwarding > /dev/null
+
+Create Launcher VM:
+
+az vm create --resource-group kubeadm --name launcher --image UbuntuLTS --vnet-name kubernetes-vnet --subnet launcher-subnet --admin-username pranabpaul --generate-ssh-keys
+
+Log-in to Launcher VM:
+
+ssh pranabpaul@13.95.211.101 (Use the public IP of the VM)
+
+Install Azure CLI in the Launcher VM:
+
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+Install kubectl:
+
+curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl chmod +x ./kubectl sudo mv ./kubectl /usr/local/bin/kubectl
+
+Login to Azure:
+
+az login
+
+Select Ubuntu version:
+
+az vm image list --location westeurope --publisher Canonical --offer UbuntuServer --sku 18.04-LTS --all -o table UBUNTULTS="Canonical:UbuntuServer:18.04-LTS:18.04.202007290"
+
+Provision controller VM:
+
+az vm create -g kubeadm -n controller --image ${UBUNTULTS} --nics controller-nic --nsg '' --admin-username 'kuberoot' --subscription 118ae9f9-9038-414c-ba64-08c5056602d1 --size Standard_DS2_v2 --generate-ssh-keys > /dev/null (ensure you are using right subscription id)
+
+Provision worker VMs:
+
+for i in 0 1; do az vm create -g kubeadm -n worker-${i} --image ${UBUNTULTS} --nics worker-${i}-nic --availability-set worker-as --nsg '' --admin-username 'kuberoot' --subscription 118ae9f9-9038-414c-ba64-08c5056602d1 --size Standard_DS2_v2 --generate-ssh-keys > /dev/null done
