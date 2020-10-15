@@ -1,0 +1,58 @@
+#Upgrading the Kubernetes Cluster
+
+Login to Controller VM from Launcher VM and get the version of the API server:
+kubectl version --short
+
+Release the hold on versions of kubeadm and kubelet:
+sudo apt-mark unhold kubeadm kubelet
+
+Install version 1.18.8.0 of kubeadm:
+sudo apt install -y kubeadm=1.18.8-00
+
+Hold the version of kubeadm at 1.18.8:
+sudo apt-mark hold kubeadm
+
+Verify the version of kubeadm:
+kubeadm version
+
+Plan the upgrade of all the controller components:
+sudo kubeadm upgrade plan
+
+Upgrade the controller components:
+sudo kubeadm upgrade apply v1.18.8
+
+Release the hold on the version of kubectl:
+sudo apt-mark unhold kubectl
+
+Upgrade kubectl:
+sudo apt install -y kubectl=1.18.8-00
+
+Hold the version of kubectl at 1.18.8:
+sudo apt-mark hold kubectl
+
+Upgrade the version of kubelet:
+sudo apt install -y kubelet=1.18.8-00
+
+Hold the version of kubelet at 1.18.8:
+sudo apt-mark hold kubelet
+
+Login to worker0 VM and release hold on kubelet version:
+sudo apt-mark unhold kubelet
+
+Upgrade the version of kubelet:
+sudo apt install -y kubelet=1.18.8-00
+
+Hold the version of kubelet at 1.18.8:
+sudo apt-mark hold kubelet
+
+Login to worker1 VM and release hold on kubelet version:
+sudo apt-mark unhold kubelet
+
+Upgrade the version of kubelet:
+sudo apt install -y kubelet=1.18.8-00
+
+Hold the version of kubelet at 1.18.8:
+sudo apt-mark hold kubelet
+
+Login to Controller VM and check whether all nodes are upgraded
+kubectl get nodes
